@@ -1,0 +1,17 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "shopId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    { "collectionGroup": "menuItems", "fieldPath": "imageBase64", "indexes": [] },
+    { "collectionGroup": "orders", "fieldPath": "items", "indexes": [] },
+    { "collectionGroup": "orders", "fieldPath": "note", "indexes": [] }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "msu-foodnaja",
+          "appId": "1:203190518975:android:8aaef8a1b30a49d3ca320a",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "msu-foodnaja",
+          "configurations": {
+            "android": "1:203190518975:android:8aaef8a1b30a49d3ca320a",
+            "web": "1:203190518975:web:36239a12cfa9054dca320a",
+            "ios": "1:433426198932:ios:de4401310183f70e365f81"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "singleProjectMode": true,
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8081
+    },
+    "ui": {
+      "port": 4000,
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,9 @@
+[Unit]
+Description=Renew MSU Food IP TLS certificate
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/srv/msu-food/certbot-runtime/bin/certbot renew --cert-name msu-food-ip --quiet --config-dir /srv/msu-food/letsencrypt --work-dir /srv/msu-food/acme-work --logs-dir /srv/msu-food/acme-logs --deploy-hook "/usr/sbin/nginx -t && /bin/systemctl reload nginx"
+ExecStart=/srv/msu-food/certbot-runtime/bin/certbot renew --cert-name msu-food-google --quiet --config-dir /srv/msu-food/letsencrypt --work-dir /srv/msu-food/acme-work --logs-dir /srv/msu-food/acme-logs --deploy-hook "/usr/sbin/nginx -t && /bin/systemctl reload nginx"

@@ -1,0 +1,109 @@
+{
+  "runId": "msu-food-2026-10-12",
+  "status": "complete",
+  "fileKey": "k4t7B4lBmGxj1b4Guwt8PE",
+  "fileUrl": "https://www.figma.com/design/k4t7B4lBmGxj1b4Guwt8PE",
+  "pageId": "0:1",
+  "reviewBoardId": "2:43",
+  "componentReviewId": "13:220",
+  "screens": {
+    "Discover": "2:50",
+    "Restaurant Menu": "2:53",
+    "Checkout": "2:56",
+    "Pickup Tracking": "2:59"
+  },
+  "prototypeScreens": {
+    "2:50": "11:251",
+    "2:53": "11:325",
+    "2:56": "11:386",
+    "2:59": "11:440"
+  },
+  "prototypeLinks": [
+    {
+      "from": "11:279",
+      "to": "11:325"
+    },
+    {
+      "from": "11:330",
+      "to": "11:251"
+    },
+    {
+      "from": "11:350",
+      "to": "11:386"
+    },
+    {
+      "from": "11:391",
+      "to": "11:325"
+    },
+    {
+      "from": "11:429",
+      "to": "11:440"
+    },
+    {
+      "from": "11:445",
+      "to": "11:251"
+    },
+    {
+      "from": "11:467",
+      "to": "11:251"
+    }
+  ],
+  "componentFamilies": {
+    "Button": {
+      "id": "5:57",
+      "variants": 3,
+      "propertyKeys": [
+        "Label#5:3",
+        "Style"
+      ]
+    },
+    "FilterChip": {
+      "id": "5:62",
+      "variants": 2,
+      "propertyKeys": [
+        "Label#5:6",
+        "State"
+      ]
+    },
+    "StatusStep": {
+      "id": "5:102",
+      "variants": 3,
+      "propertyKeys": [
+        "Title#5:19",
+        "Detail#5:20",
+        "State"
+      ]
+    },
+    "RestaurantCard": {
+      "id": "5:63"
+    },
+    "MenuRow": {
+      "id": "5:69"
+    }
+  },
+  "audit": {
+    "editableDescendants": 259,
+    "text": 93,
+    "instances": 34,
+    "vector": 33,
+    "discreteImageNodes": 5,
+    "fontFamilies": [
+      "Noto Sans Thai"
+    ],
+    "variables": 33,
+    "textStyles": 7,
+    "missingCodeSyntax": 0,
+    "unscopedSemanticVariables": 0,
+    "prototypeLinks": 7,
+    "topLevelPrototypeDestinations": true,
+    "visualCheck": "Pass after transparent SVG fill and CTA width fixes"
+  },
+  "screenshots": [
+    "figma-review.png",
+    "figma-components.png"
+  ],
+  "limitations": [
+    "Figma interactions connect the main ordering journey; search, filters and favorites are visual specifications.",
+    "Photo fills use bundled demo illustrations; restaurants should supply actual food photos."
+  ]
+}

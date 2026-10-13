@@ -1,0 +1,19 @@
+{
+  "name": "MSU Food",
+  "short_name": "MSU Food",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F46B38",
+  "theme_color": "#F46B38",
+  "description": "MSU Food — สั่งอาหารล่วงหน้า รับที่ร้าน",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "sizes": "any",
+      "purpose": "any",
+      "src": "favicon.svg",
+      "type": "image/svg+xml"
+    }
+  ]
+}

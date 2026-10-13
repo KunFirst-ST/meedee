@@ -1,0 +1,217 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.get('email_verified', false) == true;
+    }
+    function ownAccount(uid) { return signedIn() && request.auth.uid == uid; }
+    function shopPath(shopId) {
+      return /databases/$(database)/documents/shops/$(shopId);
+    }
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+    function ownsShop(shopId) {
+      return signedIn() && get(shopPath(shopId)).data.ownerId == request.auth.uid;
+    }
+    function nonemptyText(value, maximum) {
+      return value is string && value.size() > 0 && value.size() <= maximum;
+    }
+    function optionalText(data, key, maximum) {
+      return !(key in data) ||
+        (data[key] is string && data[key].size() <= maximum);
+    }
+    function validMoney(value, maximum) {
+      return value is number && value > 0 && value <= maximum &&
+        math.abs(value * 100 - math.round(value * 100)) < 0.000001;
+    }
+    function validProfile(data) {
+      return data.keys().hasOnly([
+          'displayName', 'phone', 'role', 'shopId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll(['displayName', 'role', 'createdAt']) &&
+        nonemptyText(data.displayName, 120) &&
+        (!('phone' in data) ||
+          (data.phone is string && data.phone.size() <= 20 &&
+            (data.phone == '' || data.phone.matches('[+]?[0-9]{8,15}')))) &&
+        data.role in ['customer', 'shop', 'unassigned'] &&
+        data.createdAt is timestamp &&
+        (!('updatedAt' in data) || data.updatedAt == request.time) &&
+        (!('shopId' in data) || nonemptyText(data.shopId, 128)) &&
+        (data.role != 'shop' ||
+          (nonemptyText(data.get('shopId', ''), 128) &&
+            getAfter(shopPath(data.shopId)).data.ownerId == request.auth.uid));
+    }
+
+    match /users/{uid} {
+      allow read: if ownAccount(uid);
+      allow create: if ownAccount(uid) && validProfile(request.resource.data) &&
+        request.resource.data.createdAt == request.time &&
+        (!('shopId' in request.resource.data) ||
+          getAfter(shopPath(request.resource.data.shopId)).data.ownerId == uid);
+      allow update: if ownAccount(uid) && validProfile(request.resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'phone', 'role', 'shopId', 'updatedAt'
+        ]) &&
+        request.resource.data.updatedAt == request.time &&
+        (resource.data.get('shopId', null) == null
+          ? (!('shopId' in request.resource.data) ||
+            getAfter(shopPath(request.resource.data.shopId)).data.ownerId == uid)
+          : request.resource.data.shopId == resource.data.shopId);
+      // Switching role keeps the profile, the owned shop and all order history.
+      allow delete: if false;
+
+      match /favorites/{shopId} {
+        allow read, delete: if ownAccount(uid);
+        allow create, update: if ownAccount(uid) &&
+          request.resource.data.keys().hasOnly(['shopId', 'createdAt']) &&
+          request.resource.data.shopId == shopId &&
+          request.resource.data.createdAt == request.time &&
+          exists(shopPath(shopId));
+      }
+    }
+
+    function validShop(data) {
+      return data.keys().hasOnly([
+          'name', 'ownerId', 'isOpen', 'description', 'category', 'location',
+          'preparationMinutes', 'createdAt', 'updatedAt', 'orderCount'
+        ]) &&
+        data.keys().hasAll(['name', 'ownerId', 'isOpen', 'createdAt']) &&
+        nonemptyText(data.name, 120) && nonemptyText(data.ownerId, 128) &&
+        data.isOpen is bool && data.createdAt is timestamp &&
+        optionalText(data, 'description', 500) &&
+        optionalText(data, 'category', 80) &&
+        optionalText(data, 'location', 200) &&
+        (!('preparationMinutes' in data) ||
+          (data.preparationMinutes is int && data.preparationMinutes >= 1 &&
+            data.preparationMinutes <= 240)) &&
+        (!('orderCount' in data) ||
+          (data.orderCount is int && data.orderCount >= 0));
+    }
+
+    match /shops/{shopId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && validShop(request.resource.data) &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.get('orderCount', 0) == 0 &&
+        getAfter(userPath(request.auth.uid)).data.role == 'shop' &&
+        getAfter(userPath(request.auth.uid)).data.shopId == shopId;
+      allow update: if ownsShop(shopId) && validShop(request.resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'isOpen', 'description', 'category', 'location',
+          'preparationMinutes', 'updatedAt'
+        ]) && request.resource.data.updatedAt == request.time;
+      // Removal requires a trusted administrative flow to retain order references.
+      allow delete: if false;
+    }
+
+    function validMenu(data) {
+      return data.keys().hasOnly([
+          'shopId', 'name', 'price', 'available', 'imageBase64',
+          'category', 'description', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll(['shopId', 'name', 'price', 'available', 'createdAt']) &&
+        nonemptyText(data.shopId, 128) && nonemptyText(data.name, 120) &&
+        validMoney(data.price, 100000) && data.available is bool &&
+        data.createdAt is timestamp &&
+        optionalText(data, 'imageBase64', 280000) &&
+        optionalText(data, 'category', 80) &&
+        optionalText(data, 'description', 500);
+    }
+
+    match /menuItems/{menuId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && validMenu(request.resource.data) &&
+        ownsShop(request.resource.data.shopId) &&
+        request.resource.data.createdAt == request.time;
+      allow update: if ownsShop(resource.data.shopId) &&
+        validMenu(request.resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'price', 'available', 'imageBase64', 'category',
+          'description', 'updatedAt'
+        ]) && request.resource.data.updatedAt == request.time;
+      allow delete: if ownsShop(resource.data.shopId);
+    }
+
+    function checkedItemSubtotal(item, shopId) {
+      let menuId = item.menuItemId;
+      let quantity = item.qty;
+      let price = item.price;
+      let menu = get(/databases/$(database)/documents/menuItems/$(menuId)).data;
+      // Validate and calculate together so each line only traverses one
+      // item-validation function within the 1,000-expression rule budget.
+      return item.keys().hasOnly(['menuItemId', 'name', 'price', 'qty']) &&
+        menuId is string &&
+        quantity is int && quantity >= 1 && quantity <= 99 &&
+        // The exact stored price has already passed validMenu when written.
+        price > 0 &&
+        menu.shopId == shopId && menu.available == true &&
+        menu.name == item.name && menu.price == price
+          ? math.round(price * 100) * quantity : null;
+    }
+    function totalInSatang(items, shopId) {
+      // The caller requires at least one line. Keep optional slots inline to
+      // avoid eight extra function evaluations; invalid lines return null.
+      return checkedItemSubtotal(items[0], shopId) +
+        (items.size() > 1 ? checkedItemSubtotal(items[1], shopId) : 0) +
+        (items.size() > 2 ? checkedItemSubtotal(items[2], shopId) : 0) +
+        (items.size() > 3 ? checkedItemSubtotal(items[3], shopId) : 0) +
+        (items.size() > 4 ? checkedItemSubtotal(items[4], shopId) : 0) +
+        (items.size() > 5 ? checkedItemSubtotal(items[5], shopId) : 0) +
+        (items.size() > 6 ? checkedItemSubtotal(items[6], shopId) : 0) +
+        (items.size() > 7 ? checkedItemSubtotal(items[7], shopId) : 0);
+    }
+    function validNewOrder(data, orderId) {
+      let shop = get(shopPath(data.shopId)).data;
+      let items = data.items;
+      return data.keys().hasOnly([
+          'shopId', 'shopName', 'customerId', 'customerName', 'items',
+          'total', 'status', 'note', 'requestId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.customerId == request.auth.uid &&
+        get(userPath(request.auth.uid)).data.role == 'customer' &&
+        data.shopId is string && shop.isOpen == true &&
+        data.shopName == shop.name && nonemptyText(data.customerName, 120) &&
+        data.customerName == get(userPath(request.auth.uid)).data.displayName &&
+        data.status == 'pending' && data.note is string && data.note.size() <= 500 &&
+        data.requestId is string && data.requestId.matches('[a-zA-Z0-9_-]{1,128}') &&
+        orderId == data.customerId + '_' + data.requestId &&
+        data.createdAt == request.time && data.updatedAt == request.time &&
+        items is list && items.size() >= 1 && items.size() <= 8 &&
+        data.total == totalInSatang(items, data.shopId) / 100.0;
+    }
+    function nextOrderStatus(from, to) {
+      return (from == 'pending' && to == 'accepted') ||
+        (from == 'accepted' && to == 'cooking') ||
+        (from == 'cooking' && to == 'ready') ||
+        (from == 'ready' && to == 'completed');
+    }
+
+    match /orders/{orderId} {
+      // A missing document can be checked for checkout idempotency, but an existing
+      // receipt is visible only to its customer and its shop owner.
+      allow get: if signedIn() &&
+        (!exists(/databases/$(database)/documents/orders/$(orderId)) ||
+          resource.data.customerId == request.auth.uid ||
+          ownsShop(resource.data.shopId));
+      allow list: if signedIn() &&
+        (resource.data.customerId == request.auth.uid ||
+          ownsShop(resource.data.shopId));
+      // Eight lines cap the access budget: 1 profile + 1 shop + 8 menu documents.
+      // Keep the app's OrderValidation.maxDistinctItems in sync with this bound.
+      allow create: if signedIn() && validNewOrder(request.resource.data, orderId);
+      allow update: if signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt'
+        ]) && request.resource.data.updatedAt == request.time &&
+        ((ownsShop(resource.data.shopId) &&
+            nextOrderStatus(resource.data.status, request.resource.data.status)) ||
+          (resource.data.status == 'pending' &&
+            request.resource.data.status == 'cancelled' &&
+            (resource.data.customerId == request.auth.uid ||
+              ownsShop(resource.data.shopId))));
+      allow delete: if false;
+    }
+  }
+}

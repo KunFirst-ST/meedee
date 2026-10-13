@@ -1,0 +1,63 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('users', function (Blueprint $table) {
+            $table->string('id', 128)->primary();
+            $table->string('display_name', 120);
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password')->nullable();
+            $table->string('phone', 30)->nullable();
+            $table->enum('role', ['customer', 'shop'])->nullable();
+            $table->string('shop_id', 128)->nullable();
+            $table->string('google_id', 128)->nullable()->unique();
+            $table->string('legacy_firebase_uid', 128)->nullable()->unique();
+            $table->boolean('legacy_password_user')->default(false);
+            $table->timestamp('disabled_at')->nullable();
+            $table->rememberToken();
+            $table->timestamps();
+            if (Schema::getConnection()->getDriverName() === 'mysql') {
+                foreach ($table->getColumns() as $column) {
+                    if (in_array($column->name, ['id', 'shop_id', 'google_id', 'legacy_firebase_uid'], true)) {
+                        $column->collation('utf8mb4_bin');
+                    }
+                }
+            }
+        });
+
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->string('user_id', 128)->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('sessions');
+    }
+};
